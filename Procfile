@@ -1,1 +1,1 @@
-web: gunicorn shopsphere.wsgi
+web: gunicorn shopsphere.wsgi:application
