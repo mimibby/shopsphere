@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
+from cloudinary.models import CloudinaryField
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 # ---- CATEGORY MODEL ----
 class Category(models.Model):
@@ -38,7 +40,8 @@ class Product(models.Model):
     sizes = models.ManyToManyField(Size, blank=True)
     colors = models.ManyToManyField(Color, blank=True)
     description = models.TextField(blank=True)
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
+    image = CloudinaryField('image', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
@@ -54,7 +57,7 @@ class Product(models.Model):
 # ---- PRODUCT IMAGE MODEL ----
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='products/')
+    image = CloudinaryField('image')
 
     def __str__(self):
         return f"Image for {self.product.name}"
@@ -66,6 +69,7 @@ class Order(models.Model):
         ('Processing', 'Processing'),
         ('Shipped', 'Shipped'),
         ('Delivered', 'Delivered'),
+        ('Cancelled', 'Cancelled')
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -127,7 +131,7 @@ class OrderTracking(models.Model):
 
 class HeroImage(models.Model):
     title = models.CharField(max_length=100, blank=True)
-    image = models.ImageField(upload_to='hero_slider/')
+    image = CloudinaryField('image')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
