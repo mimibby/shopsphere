@@ -2,6 +2,9 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 import dj_database_url
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 # Load local .env file (for local development)
 load_dotenv()
@@ -10,15 +13,19 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Secret key and debug
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-placeholder")
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-# Allowed hosts
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-    CSRF_TRUSTED_ORIGINS = [f"https://{RENDER_EXTERNAL_HOSTNAME}"]
+
+CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", "https://localhost:8000"]
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Application definition
 INSTALLED_APPS = [
@@ -49,6 +56,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'shopsphere.urls'
+WSGI_APPLICATION = 'shopsphere.wsgi.application'
 
 TEMPLATES = [
     {
@@ -65,7 +73,6 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'shopsphere.wsgi.application'
 
 # Database (PostgreSQL on Render, SQLite locally)
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -107,17 +114,24 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+MEDIA_URL = '/media/'
 
-# Media files (Cloudinary)
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
-}
+if DEBUG:
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+else:
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# (Cloudinary configuration for production)
+cloudinary.config (
+    cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key = os.getenv('CLOUDINARY_API_KEY'),
+    api_secret = os.getenv('CLOUDINARY_API_SECRET'),
+    secure = True
+)
+    
 
 # Login URLs
-LOGIN_URL = '/shop/login'
+LOGIN_URL = '/accounts/login'
 LOGIN_REDIRECT_URL = '/'
 
 # Crispy forms
@@ -126,10 +140,10 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS') == 'True'
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL') == 'True'
+EMAIL_HOST = os.getenv('EMAIL_HOST', "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 465))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False') == 'True'
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
