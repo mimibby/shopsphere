@@ -54,6 +54,7 @@
     </form>
   {% else %}
     <p>Your cart is empty.</p>
+    <a href="{% url 'shop:all_products' %}" class="btn btn-secondary">Shop Products</a>
   {% endif %}
 </div>
 {% endblock %}

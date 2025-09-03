@@ -4,6 +4,7 @@ from django.utils.text import slugify
 from cloudinary.models import CloudinaryField
 from django.core.validators import MinValueValidator, MaxValueValidator
 
+
 # ---- CATEGORY MODEL ----
 class Category(models.Model):
     name = models.CharField(max_length=100)
@@ -14,22 +15,21 @@ class Category(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
-    def __str__(self):
+    def _str_(self):
         return self.name
-
 
 # ---- SIZE MODEL ----
 class Size(models.Model):
     name = models.CharField(max_length=50)
 
-    def __str__(self):
+    def _str_(self):
         return self.name
 
 # ---- COLOR MODEL ----
 class Color(models.Model):
     name = models.CharField(max_length=50)
 
-    def __str__(self):
+    def _str_(self):
         return self.name
 
 # ---- PRODUCT MODEL ----
@@ -40,10 +40,10 @@ class Product(models.Model):
     sizes = models.ManyToManyField(Size, blank=True)
     colors = models.ManyToManyField(Color, blank=True)
     description = models.TextField(blank=True)
-    image = CloudinaryField('image', blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    image = CloudinaryField('image', blank=True, null=True)  
+    created_at = models.DateTimeField(auto_now_add=True)      
 
-    def __str__(self):
+    def _str_(self):
         return self.name
 
     @property
@@ -57,56 +57,98 @@ class Product(models.Model):
 # ---- PRODUCT IMAGE MODEL ----
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
-    image = CloudinaryField('image')
+    image = CloudinaryField('image')  # Multiple images on Cloudinary
 
-    def __str__(self):
+    def _str_(self):
         return f"Image for {self.product.name}"
+
 
 # ---- ORDER MODEL ----
 class Order(models.Model):
     STATUS_CHOICES = [
-        ('Pending', 'Pending'),
         ('Processing', 'Processing'),
         ('Shipped', 'Shipped'),
+        ('In Transit', 'In Transit'),
         ('Delivered', 'Delivered'),
-        ('Cancelled', 'Cancelled')
+        ('Cancelled', 'Cancelled'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='Processing'   
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
+    class Meta:
+        ordering = ['-created_at']
+
+    def _str_(self):
         return f"Order #{self.id} by {self.user.username}"
+
+    def add_tracking_update(self, status, location=None, note=None):
+        """
+        Utility method: updates the order status AND creates a tracking record.
+        """
+        self.status = status
+        self.save()
+
+        return self.tracking_updates.create(
+            status=status,
+            location=location,
+            note=note
+        )
+
 
 # ---- ORDER ITEM MODEL ----
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
     quantity = models.PositiveIntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)  # unit price
+    price = models.DecimalField(max_digits=10, decimal_places=2)
 
-    def __str__(self):
+    def _str_(self):
         return f"{self.quantity} x {self.product.name if self.product else 'Deleted Product'}"
+
 
 # ---- REVIEW MODEL ----
 class Review(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    rating = models.PositiveIntegerField(default=5)
-    comment = models.TextField(blank=True)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="reviews"
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="reviews"
+    )
+    rating = models.PositiveIntegerField(
+        default=5,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],  
+        help_text="Rating between 1 (lowest) and 5 (highest)"
+    )
+    comment = models.TextField(
+        blank=True,
+        help_text="Optional comment about the product"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Review by {self.user.username} on {self.product.name}"
+    class Meta:
+        unique_together = ('user', 'product')   
+        ordering = ['-created_at']             
+
+    def _str_(self):
+        return f"Review {self.rating}/5 by {self.user.username} on {self.product.name}"
 
 # ---- WISHLIST MODEL ----
 class Wishlist(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     products = models.ManyToManyField(Product, blank=True)
 
-    def __str__(self):
+    def _str_(self):
         return f"{self.user.username}'s Wishlist"
 
 # ---- ORDER TRACKING MODEL ----
@@ -123,17 +165,25 @@ class OrderTracking(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Processing')
     location = models.CharField(max_length=255, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-updated_at']
 
-    def __str__(self):
+    def _str_(self):
         return f"Order {self.order.id} - {self.status}"
     
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Automatically update the main Order status whenever a tracking record is saved
+        self.order.status = self.status
+        self.order.save()
 
-
+# ---- HERO IMAGE ----
 class HeroImage(models.Model):
     title = models.CharField(max_length=100, blank=True)
-    image = CloudinaryField('image')
+    image = CloudinaryField('image')  # Cloudinary field
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
+    def _str_(self):
         return self.title or f"Hero Image {self.id}"
