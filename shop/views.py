@@ -351,7 +351,7 @@ def wishlist_view(request):
 # -----------------------------
 def search_results(request):
     query = request.GET.get('q')
-    products = Product.objects.filter(Q(name_icontains=query) | Q(description_icontains=query)) if query else []
+    products = Product.objects.filter(Q(name__icontains=query) | Q(description__icontains=query)) if query else []
     return render(request, 'shop/search_results.html', {'products': products, 'query': query})
 
 # -----------------------------
