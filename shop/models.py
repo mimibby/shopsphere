@@ -15,21 +15,21 @@ class Category(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
-    def _str_(self):
+    def __str__(self):
         return self.name
 
 # ---- SIZE MODEL ----
 class Size(models.Model):
     name = models.CharField(max_length=50)
 
-    def _str_(self):
+    def __str__(self):
         return self.name
 
 # ---- COLOR MODEL ----
 class Color(models.Model):
     name = models.CharField(max_length=50)
 
-    def _str_(self):
+    def __str__(self):
         return self.name
 
 # ---- PRODUCT MODEL ----
@@ -43,7 +43,7 @@ class Product(models.Model):
     image = CloudinaryField('image', blank=True, null=True)  
     created_at = models.DateTimeField(auto_now_add=True)      
 
-    def _str_(self):
+    def __str__(self):
         return self.name
 
     @property
@@ -59,7 +59,7 @@ class ProductImage(models.Model):
     product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
     image = CloudinaryField('image')  # Multiple images on Cloudinary
 
-    def _str_(self):
+    def __str__(self):
         return f"Image for {self.product.name}"
 
 
@@ -85,7 +85,7 @@ class Order(models.Model):
     class Meta:
         ordering = ['-created_at']
 
-    def _str_(self):
+    def __str__(self):
         return f"Order #{self.id} by {self.user.username}"
 
     def add_tracking_update(self, status, location=None, note=None):
@@ -109,7 +109,7 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
-    def _str_(self):
+    def __str__(self):
         return f"{self.quantity} x {self.product.name if self.product else 'Deleted Product'}"
 
 
@@ -140,7 +140,7 @@ class Review(models.Model):
         unique_together = ('user', 'product')   
         ordering = ['-created_at']             
 
-    def _str_(self):
+    def __str__(self):
         return f"Review {self.rating}/5 by {self.user.username} on {self.product.name}"
 
 # ---- WISHLIST MODEL ----
@@ -148,7 +148,7 @@ class Wishlist(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     products = models.ManyToManyField(Product, blank=True)
 
-    def _str_(self):
+    def __str__(self):
         return f"{self.user.username}'s Wishlist"
 
 # ---- ORDER TRACKING MODEL ----
@@ -169,7 +169,7 @@ class OrderTracking(models.Model):
     class Meta:
         ordering = ['-updated_at']
 
-    def _str_(self):
+    def __str__(self):
         return f"Order {self.order.id} - {self.status}"
     
     def save(self, *args, **kwargs):
@@ -185,5 +185,5 @@ class HeroImage(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def _str_(self):
+    def __str__(self):
         return self.title or f"Hero Image {self.id}"
